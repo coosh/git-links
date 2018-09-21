@@ -13,6 +13,7 @@ module.exports = GitLinks =
       'git-links:copy-absolute-link-for-current-line': => @currentLine()
       'git-links:copy-absolute-link-for-current-file': => @currentFile()
       'git-links:copy-absolute-link-for-current-commit': => @currentCommit()
+      'git-links:copy-absolute-link-for-file-on-master': => @currentMasterFile()
 
   deactivate: ->
     @subscriptions.dispose()
@@ -64,6 +65,31 @@ module.exports = GitLinks =
             gitDirectory = stdout.trim()
             relativePath = filePath.replace(gitDirectory, '')
             link = repo + '/blob/' + commitHash + relativePath
+            atom.clipboard.write(link)
+            atom.notifications.addInfo('Copied link for current file to clipboard', detail: link)
+          )
+        )
+      )
+
+  currentMasterFile: ->
+    # there is no current file if we don't have an active text editor
+    if editor = atom.workspace.getActiveTextEditor()
+      filePath = @forwardFilePath()
+      self = this
+      # callback hell, here we come
+      self.git(['config', '--get', 'remote.origin.url'], (code, stdout, errors) ->
+        repo = stdout.trim()
+          .replace(/^git@/, 'https://')
+          .replace(/\.com:/, '.com/')
+          .replace(/\.git$/, '')
+
+        self.git(['log', '--pretty=oneline', '-1'], (code, stdout, errors) ->
+          commitHash = stdout.split(' ')[0]
+
+          self.git(['rev-parse', '--show-toplevel'], (code, stdout, errors) ->
+            gitDirectory = stdout.trim()
+            relativePath = filePath.replace(gitDirectory, '')
+            link = repo + '/blob/master' + relativePath
             atom.clipboard.write(link)
             atom.notifications.addInfo('Copied link for current file to clipboard', detail: link)
           )
